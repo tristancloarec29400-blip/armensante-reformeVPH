@@ -50,5 +50,5 @@ if prompt := st.chat_input("Votre question..."):
         response = model.generate_content(full_prompt)
         st.session_state.messages.append({"role": "assistant", "content": response.text})
         st.chat_message("assistant").write(response.text)
-    except:
-        st.error("Erreur de connexion.")
+   except Exception as e:
+    st.error(f"Voici le détail de l'erreur : {e}")
