@@ -2,9 +2,10 @@ import streamlit as st
 import google.generativeai as genai
 import os
 
+# --- CONFIGURATION ---
 st.set_page_config(page_title="Mon Assistant", page_icon="🤖", layout="centered")
 
-# CSS pour le style
+# --- STYLE ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -14,15 +15,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Connexion
+# --- CONNEXION ---
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
-except:
-    st.warning("⚠️ Clé API manquante.")
+except Exception as e:
+    st.error(f"Erreur de clé API : {e}")
     st.stop()
 
-# Chargement contexte
+# --- CHARGEMENT CONTEXTE ---
 @st.cache_data
 def load_context():
     if os.path.exists('contexte.txt'):
@@ -33,22 +34,36 @@ def load_context():
 contexte = load_context()
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# Chat
+# --- INTERFACE ---
 st.title("Assistant Virtuel")
+
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Bonjour ! Comment puis-je vous aider ?"}]
+    st.session_state.messages = [{"role": "assistant", "content": "Bonjour ! Je suis prêt à répondre à vos questions."}]
 
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
 
+# --- TRAITEMENT QUESTION ---
 if prompt := st.chat_input("Votre question..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
     
-    try:
-        full_prompt = f"Réponds uniquement selon ce contexte : {contexte}. Question : {prompt}"
-        response = model.generate_content(full_prompt)
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
-        st.chat_message("assistant").write(response.text)
-   except Exception as e:
-    st.error(f"Voici le détail de l'erreur : {e}")
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        try:
+            full_prompt = f"""
+            Tu es un expert. Réponds uniquement selon ce contexte.
+            Si la réponse n'est pas dedans, dis que tu ne sais pas.
+            
+            CONTEXTE: {contexte}
+            
+            QUESTION: {prompt}
+            """
+            
+            response = model.generate_content(full_prompt)
+            message_placeholder.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            
+        except Exception as e:
+            # C'est ici que l'erreur s'affichera clairement
+            message_placeholder.error(f"ERREUR DÉTAILLÉE : {e}")
