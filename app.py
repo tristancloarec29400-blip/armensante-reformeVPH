@@ -23,19 +23,18 @@ def load_context():
 
 contexte = load_context()
 
-# --- MODÈLE (Le Standard 1.5 Flash) ---
-# C'est le meilleur pour le mode gratuit
+# --- LE CERVEAU (CELUI DE VOTRE LISTE) ---
+# On utilise le modèle 2.0 Lite Preview qui était dans votre diagnostic
 try:
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('models/gemini-2.0-flash-lite-preview-02-05')
 except:
-    # Roue de secours si le premier échoue
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    st.error("Erreur fatale de modèle.")
 
 # --- INTERFACE ---
 st.title("Assistant Virtuel")
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Bonjour ! Je suis prêt."}]
+    st.session_state.messages = [{"role": "assistant", "content": "Bonjour ! Je suis connecté au modèle 2.0 Lite. Posez-moi une question sur votre page."}]
 
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
@@ -52,4 +51,9 @@ if prompt := st.chat_input("Votre question..."):
             message_placeholder.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
         except Exception as e:
-            message_placeholder.error(f"Erreur : {e}")
+            if "429" in str(e):
+                 message_placeholder.warning("⏳ Limite de vitesse atteinte. Attendez 30 secondes.")
+            elif "404" in str(e):
+                 message_placeholder.error(f"Modèle introuvable : {e}")
+            else:
+                 message_placeholder.error(f"Erreur : {e}")
