@@ -34,19 +34,18 @@ def load_context():
 
 contexte = load_context()
 
-# --- LE CERVEAU (LE POIDS LOURD) ---
-# On force la version 1.5 qui a un énorme quota gratuit
+# --- CERVEAU (LE MODÈLE DE VOTRE LISTE) ---
 try:
-    model = genai.GenerativeModel('gemini-1.5-flash')
-except:
-    # Si le 1.5 échoue, on tente le 2.0 Flash Lite (plus léger)
+    # On utilise le modèle exact trouvé dans votre diagnostic
     model = genai.GenerativeModel('models/gemini-2.0-flash-lite-preview-02-05')
+except:
+    st.error("Impossible de charger le modèle.")
 
 # --- INTERFACE ---
 st.title("Assistant Virtuel")
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Bonjour ! Je suis prêt. Attention, comme je lis beaucoup de pages, je peux mettre quelques secondes à répondre."}]
+    st.session_state.messages = [{"role": "assistant", "content": "Bonjour ! Je suis connecté au modèle 2.0 Lite. Posez-moi une question."}]
 
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
@@ -76,8 +75,9 @@ if prompt := st.chat_input("Votre question..."):
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
         except Exception as e:
-            # Si c'est encore une erreur de quota (429)
             if "429" in str(e):
-                message_placeholder.warning("⏳ Trop de demandes d'un coup ! Google demande d'attendre 60 secondes avant la prochaine question. (C'est la limite du mode gratuit pour les gros documents).")
+                message_placeholder.warning("⏳ Petite pause demandée par Google (Quota). Attendez 30 secondes et réessayez.")
+            elif "404" in str(e):
+                message_placeholder.error(f"Modèle introuvable : {e}")
             else:
                 message_placeholder.error(f"Erreur : {e}")
