@@ -1,73 +1,37 @@
 import streamlit as st
 import google.generativeai as genai
-import os
 
-# --- CONFIGURATION ---
-st.set_page_config(page_title="Mon Assistant", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="Diagnostic", page_icon="🔧")
+st.title("🔧 Diagnostic Google Gemini")
 
-# --- STYLE ---
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    h1 {color: #0066cc; text-align: center;}
-    </style>
-""", unsafe_allow_html=True)
-
-# --- CONNEXION ---
+# 1. Vérification de la Clé
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
+    st.success("✅ ÉTAPE 1 : Clé API détectée.")
 except Exception as e:
-    st.error(f"Erreur de clé API : {e}")
+    st.error(f"❌ ÉTAPE 1 : Problème de clé. {e}")
     st.stop()
 
-# --- CHARGEMENT CONTEXTE ---
-@st.cache_data
-def load_context():
-    if os.path.exists('contexte.txt'):
-        with open('contexte.txt', 'r', encoding='utf-8') as f:
-            return f.read()
-    return ""
+# 2. Liste des modèles disponibles
+st.write("---")
+st.write("⏳ Je demande à Google la liste des modèles disponibles pour votre compte...")
 
-contexte = load_context()
-
-# --- C'EST ICI LE CHANGEMENT (Modèle standard) ---
 try:
-    model = genai.GenerativeModel('gemini-pro')
-except:
-    st.error("Le modèle n'est pas disponible.")
-
-# --- INTERFACE ---
-st.title("Assistant Virtuel")
-
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Bonjour ! Je suis prêt à répondre à vos questions."}]
-
-for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
-
-# --- TRAITEMENT QUESTION ---
-if prompt := st.chat_input("Votre question..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
-    
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        try:
-            full_prompt = f"""
-            Tu es un expert. Réponds uniquement selon ce contexte.
-            Si la réponse n'est pas dedans, dis que tu ne sais pas.
+    modeles_trouves = []
+    # On demande la liste
+    for m in genai.list_models():
+        # On garde ceux qui savent générer du texte
+        if 'generateContent' in m.supported_generation_methods:
+            st.code(m.name) # On affiche le nom technique exact
+            modeles_trouves.append(m.name)
             
-            CONTEXTE: {contexte}
-            
-            QUESTION: {prompt}
-            """
-            
-            response = model.generate_content(full_prompt)
-            message_placeholder.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
-            
-        except Exception as e:
-            message_placeholder.error(f"ERREUR : {e}")
+    if len(modeles_trouves) > 0:
+        st.success(f"✅ J'ai trouvé {len(modeles_trouves)} modèles utilisables !")
+        st.info("Copiez le nom d'un modèle ci-dessus et donnez-le moi.")
+    else:
+        st.error("❌ Aucun modèle trouvé. Votre clé API semble valide mais n'a accès à aucun service.")
+        st.warning("Conseil : Vérifiez que vous avez activé la facturation (Billing) sur Google Cloud si vous utilisez un projet payant, ou recréez une clé gratuite.")
+
+except Exception as e:
+    st.error(f"❌ Erreur lors de la récupération de la liste : {e}")
