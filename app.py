@@ -32,7 +32,12 @@ def load_context():
     return ""
 
 contexte = load_context()
-model = genai.GenerativeModel('gemini-1.5-flash')
+
+# --- C'EST ICI LE CHANGEMENT (Modèle standard) ---
+try:
+    model = genai.GenerativeModel('gemini-pro')
+except:
+    st.error("Le modèle n'est pas disponible.")
 
 # --- INTERFACE ---
 st.title("Assistant Virtuel")
@@ -65,5 +70,4 @@ if prompt := st.chat_input("Votre question..."):
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
         except Exception as e:
-            # C'est ici que l'erreur s'affichera clairement
-            message_placeholder.error(f"ERREUR DÉTAILLÉE : {e}")
+            message_placeholder.error(f"ERREUR : {e}")
