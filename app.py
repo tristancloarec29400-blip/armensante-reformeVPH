@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 import os
+import time
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="Mon Assistant", page_icon="🤖", layout="centered")
@@ -12,7 +13,6 @@ st.markdown("""
     footer {visibility: hidden;}
     header {visibility: hidden;}
     h1 {color: #0066cc; text-align: center;}
-    .stChatInput {border-color: #0066cc;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -34,17 +34,19 @@ def load_context():
 
 contexte = load_context()
 
-# --- CERVEAU (On prend la version stable et gratuite) ---
+# --- LE CERVEAU (LE POIDS LOURD) ---
+# On force la version 1.5 qui a un énorme quota gratuit
 try:
-    model = genai.GenerativeModel('gemini-flash-latest')
-except Exception as e:
-    st.error(f"Erreur modèle : {e}")
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except:
+    # Si le 1.5 échoue, on tente le 2.0 Flash Lite (plus léger)
+    model = genai.GenerativeModel('models/gemini-2.0-flash-lite-preview-02-05')
 
 # --- INTERFACE ---
 st.title("Assistant Virtuel")
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Bonjour ! Je suis prêt à répondre à vos questions sur les documents."}]
+    st.session_state.messages = [{"role": "assistant", "content": "Bonjour ! Je suis prêt. Attention, comme je lis beaucoup de pages, je peux mettre quelques secondes à répondre."}]
 
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
@@ -74,5 +76,8 @@ if prompt := st.chat_input("Votre question..."):
             st.session_state.messages.append({"role": "assistant", "content": response.text})
             
         except Exception as e:
-            # Si jamais 'latest' plante aussi, on saura pourquoi
-            message_placeholder.error(f"Erreur : {e}")
+            # Si c'est encore une erreur de quota (429)
+            if "429" in str(e):
+                message_placeholder.warning("⏳ Trop de demandes d'un coup ! Google demande d'attendre 60 secondes avant la prochaine question. (C'est la limite du mode gratuit pour les gros documents).")
+            else:
+                message_placeholder.error(f"Erreur : {e}")
